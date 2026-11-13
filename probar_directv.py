@@ -3,52 +3,58 @@ import requests
 import json
 
 url = "https://www.directv.com.ec/guia/ChannelDetail.aspx/GetProgramming"
+pagina = "https://www.directv.com.ec/guia/ChannelDetail.aspx?id=1206&name=WTVHD"
+
+session = requests.Session()
 
 headers = {
-    "Content-Type": "application/json; charset=utf-8",
-    "Accept": "application/json, text/javascript, */*; q=0.01",
+    "Accept": "*/*",
+    "Content-Type": "application/json; charset=UTF-8",
     "X-Requested-With": "XMLHttpRequest",
-    "Referer": "https://www.directv.com.ec/guia/ChannelDetail.aspx?id=1206&name=WTVHD",
-    "Origin": "https://www.directv.com.ec"
+    "Referer": pagina,
+    "Origin": "https://www.directv.com.ec",
+    "User-Agent": "Mozilla/5.0"
 }
 
-payload = {"filterParameters": None}
+print("1. ABRIENDO LA PAGINA...")
+r = session.get(pagina, headers=headers, timeout=30)
+print("HTTP:", r.status_code)
+print("Cookies obtenidas:", len(session.cookies))
 
-response = requests.post(
+print("\n2. CONSULTANDO PROGRAMACION...")
+
+response = session.post(
     url,
     headers=headers,
-    json=payload,
+    json={"filterParameters": None},
     timeout=30
 )
 
 print("HTTP:", response.status_code)
-print("Longitud:", len(response.text))
-print("\nCONTENIDO ORIGINAL:")
-print(response.text[:12000])
+print("LONGITUD:", len(response.text))
+print("RESPUESTA:", response.text[:12000])
 
 try:
     data = response.json()
-    print("\nESTRUCTURA JSON:")
-    print(json.dumps(data, indent=2, ensure_ascii=False)[:12000])
-
     canales = data.get("d", [])
 
-    print("\nCANTIDAD DE CANALES:", len(canales))
+    if isinstance(canales, list):
+        print("\nCANTIDAD DE CANALES:", len(canales))
 
-    for canal in canales:
-        programas = canal.get("ProgramList", [])
-        print("\nCANAL:", canal.get("ChannelFullName"))
-        print("NUMERO:", canal.get("ChannelNumber"))
-        print("PROGRAMAS:", len(programas))
+        for canal in canales:
+            print("\nCANAL:", canal.get("ChannelFullName"))
+            print("NUMERO:", canal.get("ChannelNumber"))
 
-        for p in programas:
-            print(
-                p.get("startTimeString"),
-                "-",
-                p.get("endTimeString"),
-                "|",
-                p.get("title")
-            )
+            for p in canal.get("ProgramList", []):
+                print(
+                    p.get("startTimeString"),
+                    "-",
+                    p.get("endTimeString"),
+                    "|",
+                    p.get("title")
+                )
+    else:
+        print("\nEl campo d no contiene una lista.")
 
 except Exception as e:
-    print("\nERROR AL INTERPRETAR JSON:", e)
+    print("ERROR:", e)
